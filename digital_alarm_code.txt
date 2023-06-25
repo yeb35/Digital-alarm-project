@@ -1,0 +1,568 @@
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+int buzzer = 7;
+
+int timer=0;
+int second=0;
+int minute=32;
+int hour=18;
+
+int alarmMinute=33;
+int alarmHour=18;
+
+int sensorInput;
+int temp=0;
+int button1Prev;
+int button2Prev;
+int button3Prev;
+int button4Prev;
+
+
+int blink=0;
+bool blinkMinute=false;
+bool blinkHour=false;
+bool blinkMode=false;
+bool blinkStop=false;
+bool degree=true;
+
+bool alarmBlinkMinute=false;
+bool alarmBlinkHour=false;
+bool alarmBlinkMode=false;
+bool alarmBlinkStop=false;
+bool alarmStatus=false;
+
+
+
+bool TF=true; //Twenty Four hour
+bool PM;
+bool celsius=true;
+
+double temperature;
+
+int button1State=0;
+int button2State=0;
+int button3State=0;
+int button4State=0;
+
+
+unsigned long pressedTime1= 0;
+bool isPressing1=false;
+bool isLongDetected1=false;
+long pressDuration1;
+
+unsigned long pressedTime2= 0;
+bool isPressing2=false;
+bool isLongDetected2=false;
+long pressDuration2;
+
+
+
+
+void setup() {
+  
+  pinMode(buzzer, OUTPUT);
+  
+  lcd.begin(16, 2);
+  
+  TCCR0A=(1<<WGM01);      
+  OCR0A=0xF9; 
+  TIMSK0|=(1<<OCIE0A);   
+  sei(); 
+  TCCR0B|=(1<<CS01);    
+  TCCR0B|=(1<<CS00);
+  
+  Serial.begin(9600);  
+  
+  //buttons
+  pinMode(13,INPUT);
+  pinMode(10,INPUT);
+  pinMode(9,INPUT);
+  pinMode(8,INPUT);
+}
+void loop() {
+  
+ 
+   
+  
+  button1State=digitalRead(13);
+  button2State=digitalRead(10);
+  button3State=digitalRead(9);
+  button4State=digitalRead(8); 
+  
+  
+   if(button1State==1&& button1Prev==0){
+  	pressedTime1 = millis(); 
+    isPressing1=true;
+    isLongDetected1 = false;
+  }
+  else if(button1Prev==1 && button1State==0){
+  
+   isPressing1=false;
+  
+  
+  }
+  
+   if(isPressing1==true&&isLongDetected1==false){
+  pressDuration1 = millis() - pressedTime1;
+  }
+  
+  //-------------------------------------
+  
+  
+  if(button2State==1&& button2Prev==0){
+  	pressedTime2 = millis(); 
+    isPressing2=true;
+    isLongDetected2 = false;
+  }
+  else if(button2Prev==1 && button2State==0){
+  
+   isPressing2=false;
+  
+  
+  }
+  
+   if(isPressing2==true&&isLongDetected2==false){
+  pressDuration2 = millis() - pressedTime2;
+  }
+  
+  if(pressDuration1>3000){
+    degree=false;
+    blinkMode=true;
+  	blinkMinute=true;
+    Serial.println("State0");
+  }
+  
+  else if(blinkMode==true && blinkMinute==true &&button1State==0  &&button1Prev==1){
+  	blinkMinute=false;
+    blinkHour=true;
+    Serial.println("State1");
+  }
+  
+  else if(blinkStop==false&&blinkMode==true && blinkMinute==false &&button1State==0  &&button1Prev==1){
+  	blinkStop=true;
+    blinkHour=false;
+    Serial.println("State2");
+    degree=true;
+  }
+  
+  else if(blinkStop==true&&blinkMode==true && blinkMinute==false &&blinkHour==false && button1State==0  &&button1Prev==1){
+  	blinkMinute=false;
+	blinkHour=false;
+	blinkMode=false;
+	blinkStop=false;
+    pressDuration1=0;
+  }
+  //---------------------------------//
+  
+  if(pressDuration2>3000){
+  	degree=false;
+    alarmBlinkMode=true;
+    alarmBlinkMinute=true;
+    Serial.println("State0");
+  }
+  else if(alarmBlinkMode==true &&alarmBlinkMinute==true&&button2State==0  &&button2Prev==1){
+  	alarmBlinkMinute=false;
+    alarmBlinkHour=true;
+    Serial.println("State1");
+  }
+  else if(alarmBlinkStop==false&&alarmBlinkMode==true && alarmBlinkMinute==false &&button2State==0&&button2Prev==1){
+ 	alarmBlinkStop=true;
+    alarmBlinkHour=false;
+    Serial.println("State2");
+    degree=true;
+  }
+  
+  else if(alarmBlinkStop==true&&alarmBlinkMode==true && alarmBlinkMinute==false &&alarmBlinkHour==false && button2State==0  &&button2Prev==1){
+  	alarmBlinkMinute=false;
+	alarmBlinkHour=false;
+	alarmBlinkMode=false;
+	alarmBlinkStop=false;
+    pressDuration2=0;
+  }
+  
+  if(pressDuration2<3000&&button2State==0  &&button2Prev==1){
+  	pressDuration2=0;
+    
+    if(alarmBlinkMode==false){
+      alarmStatus=!alarmStatus;
+      lcd.clear();
+    }
+    
+    
+  }
+  
+  
+  
+  if(timer>=1000){
+    second++;
+    blink++;
+    timer=0;
+  }
+  
+  if(blink==4){  //every 4 second it gets 0  0 1 2 0 1 2 0 1 2
+  	blink=0;
+  }
+  
+  if(second==60){
+  	second=0;
+  	minute++;    
+  }
+  
+  if(minute==60){
+  	minute=0;
+    hour++;
+  }
+  
+  if(hour==24){
+  hour=0;
+  }
+  
+  
+  if(blinkMinute==false){
+  if(minute<10){
+  	lcd.setCursor(3, 0);
+  	lcd.print("0");
+    lcd.setCursor(4, 0);
+  	lcd.print(minute);
+  	}
+  
+  	  if(minute>=10){
+  	lcd.setCursor(3, 0);
+  	lcd.print(minute);
+  	}
+  }
+  
+  else if(blinkMinute==true){
+    
+    if(blink%2==1){
+    
+      if(minute<10){
+  	lcd.setCursor(3, 0);
+  	lcd.print("0");
+    lcd.setCursor(4, 0);
+  	lcd.print(minute);
+  	}
+  
+  	  if(minute>=10){
+  	lcd.setCursor(3, 0);
+  	lcd.print(minute);
+  	}
+      
+    }
+    
+    else if(blink%2==0){
+    	lcd.setCursor(3, 0);
+  		lcd.print("  ");
+    }
+      	 
+    
+  }
+  
+  
+  if (blinkHour==false){
+  if(hour<10){
+  	lcd.setCursor(0, 0);
+  	lcd.print("0");
+    lcd.setCursor(1, 0);
+  	lcd.print(hour);
+  }
+  
+  if(hour>=10){
+  	lcd.setCursor(0, 0);
+  	lcd.print(hour);
+  }
+  }
+  
+  else if (blinkHour==true){
+    
+    if(blink%2==1){
+      
+    	if(hour<10){
+  		lcd.setCursor(0, 0);
+  		lcd.print("0");
+    	lcd.setCursor(1, 0);
+  		lcd.print(hour);
+  		}
+  
+  		if(hour>=10){
+  		lcd.setCursor(0, 0);
+  		lcd.print(hour);
+        }
+    }
+    else if(blink%2==0){
+    	lcd.setCursor(0, 0);
+  		lcd.print("  ");
+    }
+  }
+  
+  
+  lcd.setCursor(2, 0);
+  lcd.print(":");
+  
+  
+  if(pressDuration1<1000 && blinkMode==false){ //press duration starts here
+  
+  if( button1State==0  &&button1Prev==1 && TF==true){
+    
+   
+    pressDuration1=0;
+  	lcd.setCursor(5,0);
+    
+    if(hour>12){
+      hour=hour-12;
+      TF=false;
+      PM=true;
+      lcd.print("PM");  
+    }else{
+      lcd.print("AM");
+      TF=false;
+      PM=false;  
+    }    
+  }
+  
+  else if(button1State==0 && button1Prev==1 && TF==false){
+    pressDuration1=0;
+    lcd.clear();
+    if(PM==true){hour=hour+12;}
+    
+    TF=true;
+    
+    } 
+  
+  }//press duration ends here
+  
+  
+  button1Prev=button1State;
+  
+  
+  //Clock set Up  begins here
+  
+  if(blinkHour==true && blinkMinute==false){
+  
+    if(button3State==0&&button3Prev==1){
+    	hour++;
+    }
+  
+  }
+  
+  else if (blinkHour==false && blinkMinute==true){
+  
+    if(button3State==0&&button3Prev==1){
+    	minute++;
+    }
+  		
+  }
+  
+  
+  //Clock set Up ends here
+  
+  
+  
+  //Alarm Begin Here
+  
+  
+  if(alarmBlinkHour==true && alarmBlinkMinute==false){
+  
+    if(button3State==0&&button3Prev==1){
+    	alarmHour++;
+    }
+  
+  }
+  
+  else if (alarmBlinkHour==false && alarmBlinkMinute==true){
+  
+    if(button3State==0&&button3Prev==1){
+    	alarmMinute++;
+    }
+  		
+  }
+  
+  if(alarmBlinkMinute==false){
+  	 if(alarmMinute<10){
+    lcd.setCursor(14,0);
+    lcd.print("0");
+  	lcd.setCursor(15,0);
+    lcd.print(alarmMinute);
+  }
+  
+  else if(alarmMinute>=10){
+  	lcd.setCursor(14,0);
+    lcd.print(alarmMinute);
+  }
+    
+  }
+  
+  else if(alarmBlinkMinute==true){
+  	
+    if(blink%2==1){
+    	if(alarmMinute<10){
+    lcd.setCursor(14,0);
+    lcd.print("0");
+  	lcd.setCursor(15,0);
+    lcd.print(alarmMinute);
+  }
+  
+  else if(alarmMinute>=10){
+  	lcd.setCursor(14,0);
+    lcd.print(alarmMinute);
+  }
+      
+    }
+  
+    else if(blink%2==0){
+    	lcd.setCursor(14,0);
+      	lcd.print("  ");
+    }
+    
+  }
+  
+  
+  if(alarmBlinkHour==false){
+  	if(alarmHour<10){
+  	lcd.setCursor(11,0);
+    lcd.print("0");
+  	lcd.setCursor(12,0);
+    lcd.print(alarmHour);
+  }
+  
+  else if(alarmHour>=10){
+  	lcd.setCursor(11,0);
+    lcd.print(alarmHour);
+  }
+  }
+  
+  else if(alarmBlinkHour==true){
+    if(blink%2==1){
+    	if(alarmHour<10){
+  	lcd.setCursor(11,0);
+    lcd.print("0");
+  	lcd.setCursor(12,0);
+    lcd.print(alarmHour);
+  }
+  
+  else if(alarmHour>=10){
+  	lcd.setCursor(11,0);
+    lcd.print(alarmHour);
+  }
+    }
+    
+    else if(blink%2==0){
+    	lcd.setCursor(11,0);
+     	lcd.print("  "); 
+    }
+  }
+  
+  
+  
+  lcd.setCursor(13,0);
+  lcd.print(":");
+  
+  
+  lcd.setCursor(7,1);
+  lcd.print("ALARM:");
+  
+  if(alarmStatus==false){
+  	lcd.setCursor(13,1);
+    lcd.print("OFF");
+  }
+  
+  else if(alarmStatus==true){
+    lcd.setCursor(13,1);
+  	lcd.print("ON");
+  }
+  
+  
+  
+   if(alarmHour==hour&&alarmMinute==minute&&alarmStatus==true){
+  tone(buzzer, 1000);
+  }
+  
+  if(alarmStatus==false||alarmHour!=hour||alarmMinute!=minute){
+  noTone(buzzer);
+  }
+   
+  
+  if(alarmMinute>=60){
+    lcd.clear();
+  alarmMinute=alarmMinute%60;
+  }
+  
+  if(alarmHour>=24){
+    lcd.clear();
+  alarmHour=0;
+  }
+  
+  
+  if(button4State==0&&button4Prev==1){
+  
+    if(alarmHour==hour&&alarmMinute==minute&&alarmStatus==true){
+    alarmMinute=alarmMinute+5;
+    }
+  
+  }
+     
+  
+  //Alarm ends here
+  
+ 
+  
+  //Temperature
+  sensorInput = analogRead(A0);
+  temperature = (double)sensorInput / 1024;   
+  temperature = temperature * 5;                     
+  temperature = temperature - 0.5;                    
+  temperature = temperature * 100;	
+  temperature = temperature;
+  
+  
+  
+  if(celsius==true){
+    lcd.setCursor(0,1);
+  	lcd.print((int)temperature);
+  	lcd.setCursor(3,1);
+  	lcd.print("C");
+  	//Serial.println(temperature);
+    }
+  
+  if(celsius==false){
+    temperature=temperature*1.8;
+    temperature=temperature+32;
+    lcd.setCursor(0,1);
+  	lcd.print((int)temperature);
+  	lcd.setCursor(3,1);
+  	lcd.print("F");
+  	//Serial.println(temperature);
+    
+    }
+  
+  if(button3State==0 && button3Prev==1 && degree==true){
+    
+    if(celsius==true){
+    celsius=false;
+    }
+    
+    else if(celsius==false){
+    celsius=true;
+    }
+    
+  }
+    
+  
+  button2Prev=button2State;
+  button3Prev=button3State;
+  button4Prev=button4State;
+  
+  //Debug part
+  
+  Serial.println(pressDuration1);
+
+  
+  //End loop
+}
+
+
+//Timer interrupt
+ISR(TIMER0_COMPA_vect){    //This is the interrupt request
+  timer++;
+}
